@@ -13,6 +13,7 @@
     'use strict';
 
     //styles
+    var styleInjector = getStyleInjector();
     styleInjector.insertRule([".popup"], 'position: relative; display: inline-block; cursor: pointer; user-select: none; float:right;color:red;');
     styleInjector.insertRule([".popup .popupContent::after"], 'content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #555 transparent transparent transparent;');
     styleInjector.insertRule([".popup:hover .popupContent"], 'visibility: visible; -webkit-animation: fadeIn .5s; animation: fadeIn .5s;');
