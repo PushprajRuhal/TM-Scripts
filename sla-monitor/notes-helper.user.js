@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Notes helper
 // @namespace    http://tampermonkey.net/
-// @version      0.6
+// @version      0.7
 // @description  Bring customer notes to the SLA monitor page
 // @author       Pushpraj
 // @match        https://support.sitecore.net/dashboard/Pages/SLAmonitor.aspx*
@@ -41,7 +41,8 @@
         }
 
         //find matching nodes and inject the notes for account
-        $("div[style='background: #F3E6A9;'] > a[href='"+accountUrl+"'] > .loadingNotes").before($(popupPre + note + popupPost)).remove();
+        $("div[style='background: #F3E6A9;'] > a[href='"+accountUrl+"'] > .loadingNotes")
+            .parent().before($(popupPre + note + popupPost)).find(".loadingNotes").remove();
     };
 
     //get account urls
