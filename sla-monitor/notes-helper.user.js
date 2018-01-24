@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Notes helper
 // @namespace    http://tampermonkey.net/
-// @version      0.7
+// @version      0.8
 // @description  Bring customer notes to the SLA monitor page
 // @author       Pushpraj
 // @match        https://support.sitecore.net/dashboard/Pages/SLAmonitor.aspx*
@@ -22,6 +22,8 @@
     styleInjector.insertRule([".popupContent .cellstyle td"], 'background-color: #ffffb8; border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(204, 204, 204); line-height: normal;');
     styleInjector.insertRule([".popupContent > .box"], 'margin-bottom:auto !important;');
     styleInjector.insertRule([".popupContent table"], 'width:100%;');
+    
+    styleInjector.insertRule([".breakWord"], 'word-break: break-word !important;');
 
     styleInjector.insertRule([".loadingNotes"], 'color:red;float:right;');
 
