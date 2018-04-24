@@ -12,35 +12,18 @@
 (function() {
     'use strict';
 
-    var format = function date2str(x, y) {
-        var z = {
-            M: x.getMonth() + 1,
-            d: x.getDate(),
-            h: x.getHours(),
-            m: x.getMinutes(),
-            s: x.getSeconds()
-        };
-        y = y.replace(/(M+|d+|h+|m+|s+)/g, function(v) {
-            return ((v.length > 1 ? "0" : "") + eval('z.' + v.slice(-1))).slice(-2);
-        });
-
-        return y.replace(/(y+)/g, function(v) {
-            return x.getFullYear().toString().slice(-v.length);
-        });
-    };
-
     //styles
     var styleInjector = getStyleInjector();
-    //styleInjector.insertRule(["@keyframes toRed"], '75% {background-color: #F4BDBD;} 100% {background-color: #F4BDBD;}');
     styleInjector.insertRule(["@keyframes toAmber"], '50% {background-color: #F3E6A9;} 100% {background-color: #F3E6A9;}');
     styleInjector.insertRule([".failingSoon"], 'animation: toAmber 1s ease-in infinite alternate;');
-    //styleInjector.insertRule([".failingLater"], 'animation: toAmber 1s ease infinite alternate;');
 
     styleInjector.insertRule([".localTime"], 'float:right;');
+    styleInjector.insertRule([".week-day"], 'float:left;min-width:2.5rem;text-align:right;margin-right:0.1rem');
+    styleInjector.insertRule([".slaFontSize"], 'font-size:0.96em');
+
 
     var timeOffsetRegex = /([+-])(?:(\d+)\.)?(\d+):(\d+)/;
     var ordinals = ['','st','nd','rd'];
-    var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     function parseSLAOffset(slaOffset)
     {
         var match = timeOffsetRegex.exec(slaOffset);
@@ -58,15 +41,18 @@
                     localTime.setUTCDate(localTime.getUTCDate() + (this.sign * this.days));
                     localTime.setUTCHours(localTime.getUTCHours() + (this.sign * this.hours));
                     localTime.setUTCMinutes(localTime.getUTCMinutes() + (this.sign * this.mins));
+                    var localHour = localTime.getHours();
+                    var localMinute = localTime.getMinutes();
                     return {
                         date: localTime,
                         month: localTime.getMonth(),
                         monthName: localTime.toLocaleDateString(window.navigator.languages[0],{ month: 'short' }),
                         day: localTime.getDate(),
                         weekDayName: localTime.toLocaleDateString(window.navigator.languages[0],{ weekday: 'short' }),
-                        hour: localTime.getHours(),
-                        minute: localTime.getMinutes(),
-                        minutePadded: (localTime.getMinutes()<10)?"0"+localTime.getMinutes():localTime.getMinutes(),
+                        hour: localHour,
+                        hourPadded:  (localHour<10)?"0"+localHour:localHour,
+                        minute: localMinute,
+                        minutePadded: (localMinute<10)?"0"+localMinute:localMinute,
                         toString: localTime.toString(),
                         dayOrdinal: (function(day) {
                             return ordinals[~~(day/10%10)-1?day%10:0]||'th';
@@ -89,7 +75,7 @@
         if(sla.isValid)
         {
             var localTime = sla.toLocal();
-            if(localTime.hour > 5 && localTime.hour < 9){
+            if(localTime.hour < 9 || localTime.hour > 18){
 
                 var day = localTime.day + localTime.dayOrdinal + " " + localTime.monthName +" ";
                 var slaClass = "failingLater";
@@ -114,12 +100,18 @@
             }
         }
     });
-
-     $.each($(".slaTime"), function( index, value ) {
-         var sla = parseSLAOffset(value.innerText);
-         if(sla.isValid){
-             var localTime = sla.toLocal();
-             value.title = "Expiring: " + localTime.weekDayName+", " + localTime.monthName + " " + localTime.day + localTime.dayOrdinal + ", "+ localTime.hour + ":" +  localTime.minutePadded;
-         }
-     });
+    var dateToday = new Date().getDate();
+    $.each($(".slaTime"), function( index, value ) {
+        var sla = parseSLAOffset(value.innerText);
+        if(sla.isValid){
+            var localTime = sla.toLocal();
+            if(localTime.day <= dateToday){
+                value.title = localTime.weekDayName+", " + localTime.monthName + " " + localTime.day + localTime.dayOrdinal + ", "+ localTime.hour + ":" +  localTime.minutePadded;
+            }
+            else{
+                value.title = value.innerText;
+                value.innerHTML = "<div class='week-day slaFontSize'>"+ localTime.weekDayName + " "+localTime.day+",</div><div class='slaFontSize'>" + localTime.hourPadded + ":" +  localTime.minutePadded+"</div>";
+            }
+        }
+    });
 })();
