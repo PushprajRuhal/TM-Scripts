@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SLA time mapper
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  Maps and notify SLA time for the timezone
 // @author       You
 // @include      https://support.sitecore.net/dashboard/Pages/SLAmonitor.aspx*
