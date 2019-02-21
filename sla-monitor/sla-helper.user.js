@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         SLA time mapper
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Maps and notify SLA time for the timezone
 // @author       You
 // @include      https://support.sitecore.net/dashboard/Pages/SLAmonitor.aspx*
 // @require      https://raw.githubusercontent.com/pushprajruhal/tm-scripts/master/dependencies/style-injector.js
+// @downloadURL  https://raw.githubusercontent.com/PushprajRuhal/tm-scripts/master/sla-monitor/sla-helper.user.js
+// @updateURL    https://raw.githubusercontent.com/PushprajRuhal/tm-scripts/master/sla-monitor/sla-helper.user.js
 // @grant        none
 // ==/UserScript==
 
@@ -14,28 +16,34 @@
 
     //styles
     var styleInjector = getStyleInjector();
+    styleInjector.insertRule(["@keyframes toRed"], '50% {background-color: #F4BDBD;} 100% {background-color: #F4BDBD;}');
     styleInjector.insertRule(["@keyframes toAmber"], '50% {background-color: #F3E6A9;} 100% {background-color: #F3E6A9;}');
-    styleInjector.insertRule([".failingSoon"], 'animation: toAmber 1s ease-in infinite alternate;');
+    styleInjector.insertRule([".failingSoon"], 'animation: toRed 1s ease-in infinite alternate;');
 
     styleInjector.insertRule([".localTime"], 'float:right;');
-    styleInjector.insertRule([".week-day"], 'float:left;min-width:2.5rem;text-align:right;margin-right:0.1rem');
-    styleInjector.insertRule([".slaFontSize"], 'font-size:0.96em');
+    styleInjector.insertRule(["#ctl00_body_gvSLAdetails_gvBlock > thead > tr > th:nth-child(16), #ctl00_body_gvSLAdetails_gvBlock > thead > tr > th:nth-child(15)"], 'width: 95px !important;');
+    styleInjector.insertRule([".slaTime"], 'text-align:center;');
+    styleInjector.insertRule([".followup"], 'background:PaleTurquoise !important; ');
 
 
-    var timeOffsetRegex = /([+-])(?:(\d+)\.)?(\d+):(\d+)/;
+
+    var timeOffsetRegex = /([+-])(?:(\d+)\.)?(\d+):(\d+)\s?(\*?)/;
     var ordinals = ['','st','nd','rd'];
-    function parseSLAOffset(slaOffset)
+    function parseSLA(sla)
     {
-        var match = timeOffsetRegex.exec(slaOffset);
+        var match = timeOffsetRegex.exec(sla.innerText);
         var roundTo = 5;
         if(match)
         {
+            //debugger;
             return {
                 isValid: true,
                 sign: match[1]=="+"?1:-1,
                 days: match[2]?parseInt(match[2]):0,
                 hours: parseInt(match[3]),
-                mins: 5 * Math.floor(parseInt(match[4]) / roundTo),
+                mins: parseInt(match[4]),
+                ignored: match[5] && match[5]=="*",
+                isFollowUp: sla.title?sla.title.indexOf("Follow Up")==0:false,
                 toLocal: function() {
                     var localTime = new Date();
                     localTime.setUTCDate(localTime.getUTCDate() + (this.sign * this.days));
@@ -43,6 +51,7 @@
                     localTime.setUTCMinutes(localTime.getUTCMinutes() + (this.sign * this.mins));
                     var localHour = localTime.getHours();
                     var localMinute = localTime.getMinutes();
+                    localMinute = 5 * Math.floor(parseInt(localMinute) / roundTo);
                     return {
                         date: localTime,
                         month: localTime.getMonth(),
@@ -68,50 +77,51 @@
             };
         }
     }
-
-    var responses = $(".sorting_1 > .slaTime");
-    $.each(responses, function( index, value ) {
-        var sla = parseSLAOffset(value.innerText);
-        if(sla.isValid)
-        {
-            var localTime = sla.toLocal();
-            if(localTime.hour < 9 || localTime.hour > 18){
-
-                var day = localTime.day + localTime.dayOrdinal + " " + localTime.monthName +" ";
-                var slaClass = "failingLater";
-                var today = new Date();
-                if(today.getDay() > 4) {
-                    today.setDate(today.getDate() + 7 - today.getDay());
-                }
-                today = today.getDate();
-                if(localTime.day == today ){
-                    day="";
-                }
-                if(localTime.day <= (today + 1) ) {
-                    slaClass = "failingSoon";
-                }
-                else {
-                    return;
-                }
-                var slaDiv = $(value);
-                slaDiv.addClass(slaClass);
-                slaDiv.parent().parent().addClass(slaClass);
-                slaDiv.parent().parent().attr("title", day + "@"+ localTime.hour + ":" +  localTime.minutePadded);
-            }
-        }
-    });
-    var dateToday = new Date().getDate();
+    var today = new Date();
+    var dateToday = today.getDate();
+    var monthToday = today.getMonth();
     $.each($(".slaTime"), function( index, value ) {
-        var sla = parseSLAOffset(value.innerText);
+        var sla = parseSLA(value);
         if(sla.isValid){
             var localTime = sla.toLocal();
-            if(localTime.day <= dateToday){
-                value.title = localTime.weekDayName+", " + localTime.monthName + " " + localTime.day + localTime.dayOrdinal + ", "+ localTime.hour + ":" +  localTime.minutePadded;
+
+            var slaClass;
+            if( sla.ignored ) {
+                //slaClass = "failingSoon";
+                //ignored sla
             }
-            else{
-                value.title = value.innerText;
-                value.innerHTML = "<div class='week-day slaFontSize'>"+ localTime.weekDayName + " "+localTime.day+",</div><div class='slaFontSize'>" + localTime.hourPadded + ":" +  localTime.minutePadded+"</div>";
+
+            if(sla.sign === -1) {
+                value.title = localTime.weekDayName+", " + localTime.monthName + " " + localTime.day + localTime.dayOrdinal + ", "+ localTime.hour + ":" + localTime.minutePadded;
+                // return;
             }
+            else {
+                var prefix = "Today, ";
+                if(localTime.day === dateToday+1)
+                {
+                    prefix = "Tmrw., ";
+                }
+                else if(localTime.day > dateToday+1 || localTime.month != monthToday)
+                {
+                    prefix = localTime.weekDayName +" "+ localTime.day +", ";
+                }
+
+                if(sla.isFollowUp)
+                {
+                    slaClass = "followup";
+                }
+                if(localTime.day === dateToday && (localTime.date.getTime() - today.getTime()) < 3600000) //millis in 1 hour
+                {
+                    slaClass += " failingSoon";
+                }
+                value.innerHTML = prefix + localTime.hourPadded + ":" + localTime.minutePadded;
+            }
+
+            if(slaClass){
+                var slaDiv = $(value);
+                slaDiv.addClass(slaClass);
+            }
+
         }
     });
 })();
