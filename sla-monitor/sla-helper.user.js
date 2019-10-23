@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SLA time mapper
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  Maps and notify SLA time for the timezone
 // @author       You
 // @include      https://support.sitecore.net/dashboard/Pages/SLAmonitor.aspx*
@@ -16,8 +16,8 @@
 
     //styles
     var styleInjector = getStyleInjector();
-    styleInjector.insertRule(["@keyframes toRed"], '50% {background-color: #F4BDBD;} 100% {background-color: #F4BDBD;}');
-    styleInjector.insertRule(["@keyframes toAmber"], '50% {background-color: #F3E6A9;} 100% {background-color: #F3E6A9;}');
+    styleInjector.insertRule(["@keyframes toRed"], 'to {background-color: #F4BDBD;}');
+    styleInjector.insertRule(["@keyframes toAmber"], 'to {background-color: #F3E6A9;}');
     styleInjector.insertRule([".failingSoon"], 'animation: toRed 1s ease-in infinite alternate;');
 
     styleInjector.insertRule([".localTime"], 'float:right;');
@@ -79,7 +79,7 @@
     }
     var today = new Date();
     var dateToday = today.getDate();
-    var monthToday = today.getMonth();
+     var monthToday = today.getMonth();
     $.each($(".slaTime"), function( index, value ) {
         var sla = parseSLA(value);
         if(sla.isValid){
@@ -110,9 +110,15 @@
                 {
                     slaClass = "followup";
                 }
-                if(localTime.day === dateToday && (localTime.date.getTime() - today.getTime()) < 3600000) //millis in 1 hour
-                {
-                    slaClass += " failingSoon";
+                if(!sla.ignored){
+                    if(localTime.day === dateToday && (localTime.date.getTime() - today.getTime()) < 7200000) //millis in 2 hours
+                    {
+                        slaClass += " failingSoon";
+                    }
+                    if(today.getHours() > 12 && ((localTime.day === dateToday && localTime.hour > 18) || (localTime.day === dateToday+1 && localTime.hour < 10))) //after 6 and before 10 next day
+                    {
+                        slaClass += " failingSoon";
+                    }
                 }
                 value.innerHTML = prefix + localTime.hourPadded + ":" + localTime.minutePadded;
             }
